@@ -1,0 +1,7 @@
+In this directory is a .SQL file 'pi_health_check.sql' which can be used to create the initial Raspberry Pi Health Check MariaDB database. All you need to do is to 
+install MariaDB and then issue the following command:
+
+mysql -u root -p < ./pi_health_check.sql
+
+You will be prompted for your root password during execution of the script.
+Once the script has finished executing you will find that a 'pi_health_check' database now exists within your MariaDB instance.
