@@ -14,7 +14,7 @@ except ImportError as e:
 	sys.exit(1)
 
 ##### GLOBAL VARIABLES #####
-DEBUG = True
+DEBUG = False
 SETTINGS = []
 FLASKAPP = Flask(__name__)
 MySQL_DB_Conn = None
@@ -162,12 +162,31 @@ def home():
 		db_status_str += '<p><button onclick="document.location=\'/reconnect\'">Reconnect</button></p>'
 
 	header = "<h1>Raspberry Pi Health Check API</h1>"
-	bodyline1 = "<p>This API provides methods for inserting, updating and retrieving data from the Raspberry Pi Health Check MariaDB SQL Database.</p>"
+	bodyline1 = "<p>This API provides a method for inserting data into the Raspberry Pi Health Check MariaDB SQL Database.</p>"
 	bodyline2 = db_status_str
 
 	html_str = header + bodyline1 + bodyline2
 
 	return html_str
+
+@FLASKAPP.route('/apihealthcheck', methods=['GET'])
+def apiCheck():
+	global MySQL_DB_Conn
+	global SETTINGS
+	global DEBUG
+	db_status_str = None
+
+	if DEBUG:
+		print("DEBUG: API Health Check called.")
+	try:
+		if MySQL_DB_Conn.is_connected():
+			db_status_str = "Connected to " + SETTINGS['MYSQL_DATABASE'] + '@' + SETTINGS['MYSQL_HOSTNAME'] +  " MariaDB database."
+			return createJSONResponse('0', str(db_status_str),200)
+		else:
+			db_status_str = "Not connected to the Raspberry Pi Health Check MariaDB database."
+			return createJSONResponse('-1', str(db_status_str),500)
+	except Error as e:
+		return createJSONResponse('-1',"API Health Check failed: " + str(e),500)
 
 @FLASKAPP.route('/reconnect', methods=['GET'])
 def reconnectDB():
