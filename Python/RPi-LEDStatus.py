@@ -167,71 +167,39 @@ def disconnect_db_connection():
 		print("ERROR: Error occurred while trying to disconnect from the MariaDB database: ", str(e))
 		sys.exit(1)
 
-def turn_off_led(gpio_pin):
+def control_led(gpio_pin, brightness = 100, frequency = 1, enabled_value = None):
 	global debug
 	global MySQL_DB_Conn
 	global GPIO
 
-	print("INFO: Turning off LED on GPIO Pin " + str(gpio_pin))
+	print("INFO: Setting LED on GPIO Pin " + str(gpio_pin) + ". Frequency: " + str(frequency) + ", Brightness: " + str(brightness))
 	try:
-		# Turn off LED
-		GPIO.setup(gpio_pin, GPIO.OUT)
-		pwm_pin = GPIO.PWM(gpio_pin, 1)
-		pwm_pin.start(0)
-
-		# Update database
-		if (debug):
-			print("DEBUG INFO: Attempting to update database to indicate LED is now off.")
-
-		sql = ("UPDATE gpio_def SET enabled = NULL WHERE pin = " + str(gpio_pin))
-
-		if (debug):
-			print("DEBUG INFO: SQL to indicate LED is now off: ")
-			print(sql)
-		try:
-			cursor = MySQL_DB_Conn.cursor()
-			cursor.execute(sql)
-		except Error as e:
-			print("ERROR: Error occurred while trying to update database to indicate LED is now off: ", str(e))
-			sys.exit(1)
-	except:
-		print("ERROR: Unexpected error trying to turn off LED:", sys.exc_info())
-		raise
-
-def turn_on_led(gpio_pin, brightness, frequency):
-	global debug
-	global MySQL_DB_Conn
-	global GPIO
-
-	############ TODO: REVISIT AFTER TESTING ############
-	if frequency == None:
-		frequency = 1
-	#####################################################
-
-	print("INFO: Turning on LED on GPIO Pin " + str(gpio_pin) + ". Frequency: " + str(frequency) + ", Brightness: " + str(brightness))
-	try:
-		# Turn on LED
+		# Setup LED
 		GPIO.setup(gpio_pin, GPIO.OUT)
 		pwm_pin = GPIO.PWM(gpio_pin, frequency)
 		pwm_pin.start(brightness)
 
-		# Update database
-		if (debug):
-			print("DEBUG INFO: Attempting to update database to indicate LED is now on.")
+		# Update database only if value for enabled is passed
+		if (enabled_value is not None):
+			if (debug):
+				print("DEBUG INFO: Attempting to update database.")
 
-		sql = ("UPDATE gpio_def SET enabled = 'Y' WHERE pin = " + str(gpio_pin))
+			sql = ("UPDATE gpio_def SET enabled = " + str(enabled_value)  + " WHERE pin = " + str(gpio_pin))
 
-		if (debug):
-			print("DEBUG INFO: SQL to indicate LED is now on: ")
-			print(sql)
-		try:
-			cursor = MySQL_DB_Conn.cursor()
-			cursor.execute(sql)
-		except Error as e:
-			print("ERROR: Error occurred while trying to update database to indicate LED is now on: ", str(e))
-			sys.exit(1)
+			if (debug):
+				print("DEBUG INFO: SQL to update database: ")
+				print(sql)
+			try:
+				cursor = MySQL_DB_Conn.cursor()
+				cursor.execute(sql)
+				print("INFO: Database updated successfully. Set 'enabled' value to (" + str(enabled_value) + ") for GPIO Pin "  + str(gpio_pin) + ".")
+			except Error as e:
+				print("ERROR: Error occurred while trying to update database: ", str(e))
+				sys.exit(1)
+		else:
+			print("INFO: Database update not required.")
 	except:
-		print("ERROR: Unexpected error trying to turn on LED:", sys.exc_info())
+		print("ERROR: Unexpected error trying to control LED:", sys.exc_info())
 		raise
 
 def main():
@@ -336,7 +304,7 @@ def main():
 			print("INFO: LED determined by current status is different to currently illuminated LED. Change needed!")
 			# Turn off LED which is currently illuminated.
 			if (GPIOSETTINGS['ENABLED']):
-				turn_off_led(LED_ENABLED_PIN)
+				control_led(LED_ENABLED_PIN,0,1,'NULL')
 			else:
 				print("INFO: Turning off GPIO Pin " + str(LED_ENABLED_PIN) + " will not occur as GPIO is not enabled.")
 		else:
@@ -345,7 +313,7 @@ def main():
 
 	#  Turn on relevant LED as determined by current status.
 	if (GPIOSETTINGS['ENABLED']):
-		turn_on_led(STATUS_GPIO_REC['pin'], STATUS_GPIO_REC['brightness'], STATUS_GPIO_REC['flash_freq'])
+		control_led(STATUS_GPIO_REC['pin'], STATUS_GPIO_REC['brightness'], STATUS_GPIO_REC['flash_freq'],"'Y'")
 	else:
 		print("INFO: Turning on GPIO Pin " + str(STATUS_GPIO_REC['pin']) + " will not occur as GPIO is not enabled.")
 
