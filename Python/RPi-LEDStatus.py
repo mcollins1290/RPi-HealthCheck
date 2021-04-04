@@ -2,6 +2,8 @@
 
 try:
 	import sys
+	import time
+	from datetime import datetime, timedelta
 	import os
 	import configparser
 	import mysql.connector
@@ -12,6 +14,7 @@ except ImportError as e:
 	sys.exit(1)
 
 ## GLOBAL DICTS ##
+GENERALSETTINGS = []
 MYSQLSETTINGS = []
 GPIOSETTINGS = []
 LEDSETTINGS = []
@@ -42,6 +45,7 @@ def chkArgs(argv):
 		print("DEBUG INFO: DEBUGGING ENABLED\n")
 
 def getSettings():
+	global GENERALSETTINGS
 	global MYSQLSETTINGS
 	global GPIOSETTINGS
 	global GPIO
@@ -58,10 +62,16 @@ def getSettings():
 		sys.exit(1)
 
 	# File exists, check sections and options are present. If not, print error to CLI and Exit.
-	for section in [ 'MySQL','GPIO' ]:
+	for section in [ 'General','MySQL','GPIO' ]:
 		if not config.has_section(section):
 			print("ERROR: Missing config file section: " + section +". Please check " + settings_filename)
 			sys.exit(1)
+
+		if section == 'General':
+			for option in [ 'Checkfreq' ]:
+				if not config.has_option(section, option):
+					print("ERROR: Missing " + section + " option: " + option +". Please check " + settings_filename)
+					sys.exit(1)
 
 		if section == 'MySQL':
 			for option in [ 'Host','User','Password','Database','Function' ]:
@@ -78,6 +88,10 @@ def getSettings():
 
 	# Settings file sections and options valid. Now retrieve/parse values and store in global dicts
 	try:
+		# Populate General Settings dict
+		GENERALSETTINGS = {
+			'CHECKFREQ':config.getint('General', 'Checkfreq')}
+
 		# Populate MySQL Settings dict
 		MYSQLSETTINGS = {
 			'HOST':config.get('MySQL', 'Host'),
@@ -93,6 +107,8 @@ def getSettings():
 		################## DEBUGGING ##################
 		if (debug):
 			print("DEBUG INFO: Dumping dictionary Keys & Values:\n")
+			for key, value in GENERALSETTINGS.items():
+				print('General:', key, value)
 			for key, value in MYSQLSETTINGS.items():
 				print('MySQL:', key, value)
 			for key, value in GPIOSETTINGS.items():
@@ -208,6 +224,8 @@ def main():
 	global debug
 	STATUS_GPIO_REC = None
 	LED_ENABLED_PIN = None
+
+	print("INFO: Retrieve current status from database...")
 
 	# Get Current Status
 	if (debug):
@@ -327,7 +345,15 @@ if __name__ == '__main__':
 	chkArgs(sys.argv[1:])
 	getSettings()
 	establish_db_connection()
-	main()
+	while True:
+		try:
+			main()
+			sleepuntil = datetime.now() + timedelta(seconds=GENERALSETTINGS['CHECKFREQ'])
+			print("INFO: Sleeping until " + sleepuntil.strftime("%d/%m/%Y %H:%M:%S"))
+			time.sleep(GENERALSETTINGS['CHECKFREQ'])
+		except KeyboardInterrupt:
+			print("INFO: Ctrl-C detected. Terminating program.")
+			break
 	disconnect_db_connection()
 	# Program complete. Exit cleanly
 	print("INFO: Process completed successfully. Exiting...")
