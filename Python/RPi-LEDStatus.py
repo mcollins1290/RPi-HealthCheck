@@ -248,7 +248,6 @@ def main():
 
 		if len(status) > 0:
 			if str(status) == 'F':
-				################ TODO: SWITCH ON FLASHING RED LED? ####################################
 				print("ERROR: Function to retrieve current status returned Fault value! Check database.")
 				sys.exit(1)
 			else:
@@ -276,7 +275,6 @@ def main():
 		result = cursor.fetchone()
 
 		if result == None:
-			################ TODO: SWITCH ON FLASHING RED LED? #####
 			print("ERROR: GPIO definition NOT found! Check database.")
 			sys.exit(1)
 		else:
