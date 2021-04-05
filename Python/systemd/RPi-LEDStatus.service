@@ -1,0 +1,13 @@
+[Unit]
+Description=RPi HealthCheck - LED Status
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/Git/RPi-HealthCheck/Python
+ExecStart=/usr/bin/python3.7 -u /root/Git/RPi-HealthCheck/Python/RPi-LEDStatus.py
+ExecStop=/bin/kill -SIGINT $MAINPID
+
+[Install]
+WantedBy=multi-user.target
