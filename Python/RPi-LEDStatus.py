@@ -22,6 +22,7 @@ LEDSETTINGS = []
 ## GLOBAL VARS ##
 MySQL_DB_Conn = None
 GPIO = None
+GPIO_PWM_PIN = None
 debug = False
 
 #################
@@ -85,7 +86,6 @@ def getSettings():
 					print("ERROR: Missing " + section + " option: " + option +". Please check " + settings_filename)
 					sys.exit(1)
 
-
 	# Settings file sections and options valid. Now retrieve/parse values and store in global dicts
 	try:
 		# Populate General Settings dict
@@ -134,13 +134,9 @@ def getSettings():
 				GPIO.setmode(GPIO.BOARD)
 			else:
 				print("ERROR: Invalid value for GPIO.MODE in settings file.")
-				sys.exit()
+				sys.exit(2)
 
-			try:
-				GPIO.setwarnings(False)
-			except:
-				print("ERROR: Error configuring RPi.GPIO module: " + str(sys.exc_info()))
-				sys.exit(1)
+			GPIO.setwarnings(False)
 			print("INFO: Successfully imported & configured RPi.GPIO module.")
 		else:
 			print("INFO: GPIO is NOT enabled in the settings file.")
@@ -183,17 +179,42 @@ def disconnect_db_connection():
 		print("ERROR: Error occurred while trying to disconnect from the MariaDB database: ", str(e))
 		sys.exit(1)
 
+def return_enabled_led():
+	global debug
+	global MySQL_DB_Conn
+
+	if (debug):
+		print("DEBUG INFO: Now attempting to determine whether an LED is currently illuminated.")
+
+	query = ("""SELECT * FROM gpio_def gd WHERE gd.enabled = 'Y' LIMIT 1""")
+
+	if (debug):
+		print("DEBUG INFO: Query to lookup if LED is currently illuminated: ")
+		print(query)
+
+	try:
+		cursor = MySQL_DB_Conn.cursor(dictionary=True)
+		cursor.execute(query)
+		result = cursor.fetchone()
+		return result
+	except Error as e:
+		print("ERROR: Error occurred while querying database for enabled LED: ", str(e))
+		sys.exit(1)
+
 def control_led(gpio_pin, brightness = 100, frequency = 1, enabled_value = None):
 	global debug
 	global MySQL_DB_Conn
 	global GPIO
+	global GPIOSETTINGS
+	global GPIO_PWM_PIN
 
 	print("INFO: Setting LED on GPIO Pin " + str(gpio_pin) + ". Frequency: " + str(frequency) + ", Brightness: " + str(brightness))
 	try:
 		# Setup LED
 		GPIO.setup(gpio_pin, GPIO.OUT)
-		pwm_pin = GPIO.PWM(gpio_pin, frequency)
-		pwm_pin.start(brightness)
+		del GPIO_PWM_PIN
+		GPIO_PWM_PIN = GPIO.PWM(gpio_pin, frequency)
+		GPIO_PWM_PIN.start(brightness)
 
 		# Update database only if value for enabled is passed
 		if (enabled_value is not None):
@@ -291,28 +312,13 @@ def main():
 		print("ERROR: Error occurred while trying to lookup GPIO definition based on current status: ", str(e))
 		sys.exit(1)
 
-	# Determine if an LED is currently illuminated
-	if (debug):
-		print("DEBUG INFO: Now attempting to determine whether an LED is currently illuminated.")
+	# Determine if an LED is currently enabled
+	ENABLED_LED_REC = return_enabled_led()
 
-	query = ("""SELECT gd.pin FROM gpio_def gd WHERE gd.enabled = 'Y' LIMIT 1""")
-
-	if (debug):
-		print("DEBUG INFO: Query to lookup if LED is currently illuminated: ")
-		print(query)
-
-	try:
-		cursor = MySQL_DB_Conn.cursor(dictionary=True)
-		cursor.execute(query)
-		result = cursor.fetchone()
-	except Error as e:
-		print("ERROR: Error occurred while querying database for enabled LED: ", str(e))
-		sys.exit(1)
-
-	if result == None:
+	if ENABLED_LED_REC == None:
 		print("INFO: No LEDs are currently illuminated.")
 	else:
-		LED_ENABLED_PIN = result['pin']
+		LED_ENABLED_PIN = ENABLED_LED_REC['pin']
 		print("INFO: LED on GPIO Pin " + str(LED_ENABLED_PIN) + " is currently illuminated.")
 
 		# Determine whether same LED should stay illuminated or whether a different LED needs to be illuminated.
@@ -320,6 +326,8 @@ def main():
 			print("INFO: LED determined by current status is different to currently illuminated LED. Change needed!")
 			# Turn off LED which is currently illuminated.
 			if (GPIOSETTINGS['ENABLED']):
+				if (debug):
+					print("DEBUG INFO: Turning off LED on GPIO Pin " + str(LED_ENABLED_PIN))
 				control_led(LED_ENABLED_PIN,0,1,'NULL')
 			else:
 				print("INFO: Turning off GPIO Pin " + str(LED_ENABLED_PIN) + " will not occur as GPIO is not enabled.")
@@ -329,6 +337,8 @@ def main():
 
 	#  Turn on relevant LED as determined by current status.
 	if (GPIOSETTINGS['ENABLED']):
+		if (debug):
+			print("DEBUG INFO: Turning on LED on GPIO Pin " + str((STATUS_GPIO_REC['pin'])))
 		control_led(STATUS_GPIO_REC['pin'], STATUS_GPIO_REC['brightness'], STATUS_GPIO_REC['flash_freq'],"'Y'")
 	else:
 		print("INFO: Turning on GPIO Pin " + str(STATUS_GPIO_REC['pin']) + " will not occur as GPIO is not enabled.")
@@ -352,6 +362,17 @@ if __name__ == '__main__':
 		except KeyboardInterrupt:
 			print("INFO: Ctrl-C detected. Terminating program.")
 			break
+	# Check for any enabled LEDs and turn them off
+	print("INFO: Checking for enabled LEDs and turning them off.")
+	ENABLED_LED_REC = return_enabled_led()
+	if ENABLED_LED_REC is not None:
+		if (GPIOSETTINGS['ENABLED']):
+			LED_ENABLED_PIN = ENABLED_LED_REC['pin']
+			if (debug):
+				print("DEBUG INFO: Turning off LED on GPIO Pin " + str(LED_ENABLED_PIN))
+			control_led(LED_ENABLED_PIN,0,1,'NULL')
+		else:
+			print("INFO: Turning off GPIO Pin " + str(LED_ENABLED_PIN) + " will not occur as GPIO is not enabled.")
 	disconnect_db_connection()
 	# Program complete. Exit cleanly
 	print("INFO: Process completed successfully. Exiting...")
