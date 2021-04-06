@@ -20,7 +20,6 @@ GPIOSETTINGS = []
 LEDSETTINGS = []
 
 ## GLOBAL VARS ##
-MySQL_DB_Conn = None
 GPIO = None
 GPIO_PWM_PIN = None
 debug = False
@@ -145,16 +144,15 @@ def getSettings():
 		print("ERROR: Unable to parse values from settings file: \n" + str(e))
 		sys.exit(1)
 
-def establish_db_connection():
-	global MySQL_DB_Conn
-	global debug
-	global MYSQLSETTINGS
-
-	if (debug):
-		print("DEBUG INFO: Attempting to connect to " + MYSQLSETTINGS['DATABASE'] + '@' + MYSQLSETTINGS['HOST'] +
-		" using '" + MYSQLSETTINGS['USER'] + "' as the User and '" + MYSQLSETTINGS['PASSWORD'] + "' as the Password.")
-
+def new_db_connection():
 	try:
+		global debug
+		global MYSQLSETTINGS
+
+		if (debug):
+			print("DEBUG INFO: Attempting to connect to " + MYSQLSETTINGS['DATABASE'] + '@' + MYSQLSETTINGS['HOST'] +
+			" using '" + MYSQLSETTINGS['USER'] + "' as the User and '" + MYSQLSETTINGS['PASSWORD'] + "' as the Password.")
+
 		MySQL_DB_Conn = mysql.connector.connect(host=MYSQLSETTINGS['HOST'],
 							database=MYSQLSETTINGS['DATABASE'],
 							user=MYSQLSETTINGS['USER'],
@@ -162,26 +160,26 @@ def establish_db_connection():
 		MySQL_DB_Conn.autocommit = True
 
 		if MySQL_DB_Conn.is_connected():
-			print('INFO: Connected to ' + MYSQLSETTINGS['DATABASE'] + '@' + MYSQLSETTINGS['HOST'] +  ' MariaDB database.')
+			if (debug):
+				print('DEBUG INFO: Connected to ' + MYSQLSETTINGS['DATABASE'] + '@' + MYSQLSETTINGS['HOST'] +  ' MariaDB database.')
+			return MySQL_DB_Conn
+		else:
+			return None
 
 	except Error as e:
 		print("ERROR: Error occurred while trying to connect to the MariaDB database: ", str(e))
-		sys.exit(1)
+		return None
 
-def disconnect_db_connection():
-	global MySQL_DB_Conn
-
+def disconnect_db_connection(MySQL_DB_Conn):
 	try:
 		if MySQL_DB_Conn.is_connected():
 			MySQL_DB_Conn.close()
-			print("INFO: Disconnected from MariaDB database.")
 	except Error as e:
 		print("ERROR: Error occurred while trying to disconnect from the MariaDB database: ", str(e))
 		sys.exit(1)
 
 def return_enabled_led():
 	global debug
-	global MySQL_DB_Conn
 
 	if (debug):
 		print("DEBUG INFO: Now attempting to determine whether an LED is currently illuminated.")
@@ -193,9 +191,17 @@ def return_enabled_led():
 		print(query)
 
 	try:
+		MySQL_DB_Conn = new_db_connection()
 		cursor = MySQL_DB_Conn.cursor(dictionary=True)
 		cursor.execute(query)
 		result = cursor.fetchone()
+		# Close cursor & connection to DB.
+		cursor.close()
+		disconnect_db_connection(MySQL_DB_Conn)
+		# Tidy-up
+		del cursor
+		del MySQL_DB_Conn
+		# Return result
 		return result
 	except Error as e:
 		print("ERROR: Error occurred while querying database for enabled LED: ", str(e))
@@ -203,7 +209,6 @@ def return_enabled_led():
 
 def control_led(gpio_pin, brightness = 100, frequency = 1, enabled_value = None):
 	global debug
-	global MySQL_DB_Conn
 	global GPIO
 	global GPIOSETTINGS
 	global GPIO_PWM_PIN
@@ -227,9 +232,16 @@ def control_led(gpio_pin, brightness = 100, frequency = 1, enabled_value = None)
 				print("DEBUG INFO: SQL to update database: ")
 				print(sql)
 			try:
+				MySQL_DB_Conn = new_db_connection()
 				cursor = MySQL_DB_Conn.cursor()
 				cursor.execute(sql)
 				print("INFO: Database updated successfully. Set 'enabled' value to (" + str(enabled_value) + ") for GPIO Pin "  + str(gpio_pin) + ".")
+				# Close cursor & connection to DB.
+				cursor.close()
+				disconnect_db_connection(MySQL_DB_Conn)
+				# Tidy-up
+				del cursor
+				del MySQL_DB_Conn
 			except Error as e:
 				print("ERROR: Error occurred while trying to update database: ", str(e))
 				sys.exit(1)
@@ -241,7 +253,6 @@ def control_led(gpio_pin, brightness = 100, frequency = 1, enabled_value = None)
 
 def main():
 	global GPIOSETTINGS
-	global MySQL_DB_Conn
 	global debug
 	STATUS_GPIO_REC = None
 	LED_ENABLED_PIN = None
@@ -257,10 +268,12 @@ def main():
 		print(query)
 
 	try:
+		MySQL_DB_Conn = new_db_connection()
 		cursor = MySQL_DB_Conn.cursor(named_tuple=False)
 		cursor.execute(query)
 		result = cursor.fetchone()
 		status = str(result[0])
+		del cursor
 
 		if (debug):
 			print("DEBUG INFO: Result returned from query: " + str(status))
@@ -292,6 +305,7 @@ def main():
 		cursor = MySQL_DB_Conn.cursor(dictionary=True)
 		cursor.execute(query)
 		result = cursor.fetchone()
+		del cursor
 
 		if result == None:
 			print("ERROR: GPIO definition NOT found! Check database.")
@@ -340,6 +354,10 @@ def main():
 		control_led(STATUS_GPIO_REC['pin'], STATUS_GPIO_REC['brightness'], STATUS_GPIO_REC['flash_freq'],"'Y'")
 	else:
 		print("INFO: Turning on GPIO Pin " + str(STATUS_GPIO_REC['pin']) + " will not occur as GPIO is not enabled.")
+	# Close cursor & connection to DB.
+	disconnect_db_connection(MySQL_DB_Conn)
+	# Tidy-up
+	del MySQL_DB_Conn
 
 if __name__ == '__main__':
 
@@ -350,7 +368,6 @@ if __name__ == '__main__':
 	# Script is being run as root. Continue...
 	chkArgs(sys.argv[1:])
 	getSettings()
-	establish_db_connection()
 	while True:
 		try:
 			main()
@@ -371,7 +388,6 @@ if __name__ == '__main__':
 			control_led(LED_ENABLED_PIN,0,1,'NULL')
 		else:
 			print("INFO: Turning off GPIO Pin " + str(LED_ENABLED_PIN) + " will not occur as GPIO is not enabled.")
-	disconnect_db_connection()
 	# Program complete. Exit cleanly
 	print("INFO: Process completed successfully. Exiting...")
 	sys.exit(0)
