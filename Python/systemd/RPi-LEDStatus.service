@@ -7,7 +7,7 @@ After=multi-user.target
 Type=simple
 WorkingDirectory=/root/Git/RPi-HealthCheck/Python
 ExecStart=/usr/bin/python3.7 -u /root/Git/RPi-HealthCheck/Python/RPi-LEDStatus.py
-ExecStop=/bin/kill -SIGINT $MAINPID
+KillSignal=SIGINT
 
 [Install]
 WantedBy=multi-user.target
