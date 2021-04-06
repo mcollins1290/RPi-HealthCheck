@@ -246,8 +246,6 @@ def main():
 	STATUS_GPIO_REC = None
 	LED_ENABLED_PIN = None
 
-	print("INFO: Retrieve current status from database...")
-
 	# Get Current Status
 	if (debug):
 		print("DEBUG INFO: Now attempting to retrieve current status from database.")
