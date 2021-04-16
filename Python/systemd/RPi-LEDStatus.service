@@ -1,13 +1,14 @@
 [Unit]
 Description=RPi HealthCheck - LED Status
-Requires=multi-user.target
-After=multi-user.target
+Requires=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
 WorkingDirectory=/root/Git/RPi-HealthCheck/Python
+ExecStartPre=/bin/sleep 15
 ExecStart=/usr/bin/python3.7 -u /root/Git/RPi-HealthCheck/Python/RPi-LEDStatus.py
-ExecStop=/bin/kill -SIGINT $MAINPID
+KillSignal=SIGINT
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=network-online.target
