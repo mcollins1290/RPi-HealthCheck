@@ -16,6 +16,14 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Current Database: `pi_health_check`
+--
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `pi_health_check` /*!40100 DEFAULT CHARACTER SET utf8mb4 */;
+
+USE `pi_health_check`;
+
+--
 -- Table structure for table `check_def`
 --
 
