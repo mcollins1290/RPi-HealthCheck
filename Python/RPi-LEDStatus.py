@@ -372,7 +372,7 @@ if __name__ == '__main__':
 		try:
 			main()
 			sleepuntil = datetime.now() + timedelta(seconds=GENERALSETTINGS['CHECKFREQ'])
-			print("INFO: Sleeping until " + sleepuntil.strftime("%d/%m/%Y %H:%M:%S"))
+			print("INFO: Sleeping until " + sleepuntil.strftime("%m/%d/%Y %H:%M:%S"))
 			time.sleep(GENERALSETTINGS['CHECKFREQ'])
 		except KeyboardInterrupt:
 			print("INFO: Ctrl-C detected. Terminating program.")
