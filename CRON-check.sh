@@ -5,7 +5,7 @@ cd "$(dirname "$0")";
 SEND_EMAIL_IF_OKAY=$1
 TO_EMAIL=mcollins1290@gmail.com
 
-response=$(curl -G -s http://raspberrypi2.nyave:5000/dbconnectioncheck)
+response=$(curl -G -s http://raspberrypi2.budd:5000/dbconnectioncheck)
 retVal=$?
 
 if [ $retVal -ne 0 ]; then
