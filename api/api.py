@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 
 try:
 	import sys
@@ -242,6 +242,36 @@ def insertCheckLog():
 		else:
 			del MySQL_DB_Conn
 			createJSONResponse('-1',"Unexpected error occurred when trying to connect to MariaDB database.",500)
+
+@FLASKAPP.route('/retrieve/currentstatus', methods=['GET'])
+def retrieveCurrentStatus():
+	global DEBUG
+	curr_status_str = None
+
+	if DEBUG:
+		print("DEBUG: Retrieve Current Status method called.")
+
+	MySQL_DB_Conn = new_db_connection()
+
+	if MySQL_DB_Conn is not None:
+		try:
+			if MySQL_DB_Conn.is_connected():
+				cursor = MySQL_DB_Conn.cursor()
+				sql = "SELECT GetCurrentStatus()"
+				cursor.execute(sql)
+				curr_status_str = cursor.fetchone()[0]
+				return createJSONResponse('0',str(curr_status_str),200)
+			else:
+				del MySQL_DB_Conn
+				return createJSONResponse('-1',"Failed to retrieve current status, not connected to MariaDB database.",500)
+		except Error as e:
+                	return createJSONResponse('-1',"Failed to retrieve current status: " + str(e),500)
+		finally:
+			del cursor
+			del MySQL_DB_Conn
+	else:
+		del MySQL_DB_Conn
+		return createJSONResponse('-1',"Unexpected error occurred when trying to connect to MariaDB database.",500)
 
 if __name__ == "__main__":
 
