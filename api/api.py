@@ -162,6 +162,11 @@ def home():
 
 	html_str = header + bodyline1 + bodyline2
 
+	try:
+		if MySQL_DB_Conn.is_connected():
+			MySQL_DB_Conn.close()
+	except Error as e:
+		print("ERROR: Error occurred while trying to disconnect from the MariaDB database: ", str(e))
 	del MySQL_DB_Conn
 	return html_str
 
@@ -187,6 +192,8 @@ def dbConnectionCheck():
 		except Error as e:
 			return createJSONResponse('-1',"API Health Check failed: " + str(e),500)
 		finally:
+			if MySQL_DB_Conn.is_connected():
+				MySQL_DB_Conn.close()
 			del MySQL_DB_Conn
 	else:
 		del MySQL_DB_Conn
@@ -232,11 +239,23 @@ def insertCheckLog():
 						return createJSONResponse('-1',"Failed to insert record into Check Log table: " + str(e),500)
 					finally:
 						del cursor
+						if MySQL_DB_Conn.is_connected():
+							MySQL_DB_Conn.close()
 						del MySQL_DB_Conn
 				else:
+					try:
+						if MySQL_DB_Conn.is_connected():
+							MySQL_DB_Conn.close()
+					except Error as e:
+						print("ERROR: Error occurred while trying to disconnect from the MariaDB database: ", str(e))
 					del MySQL_DB_Conn
 					return createJSONResponse('-1',"Failed to insert record into Check Log table, input parameters are not valid.",500)
 			else:
+				try:
+					if MySQL_DB_Conn.is_connected():
+						MySQL_DB_Conn.close()
+				except Error as e:
+					print("ERROR: Error occurred while trying to disconnect from the MariaDB database: ", str(e))
 				del MySQL_DB_Conn
 				return createJSONResponse('-1',"Failed to insert record into Check Log table, not connected to MariaDB database.",500)
 		else:
@@ -262,12 +281,19 @@ def retrieveCurrentStatus():
 				curr_status_str = cursor.fetchone()[0]
 				return createJSONResponse('0',str(curr_status_str),200)
 			else:
+				try:
+					if MySQL_DB_Conn.is_connected():
+						MySQL_DB_Conn.close()
+				except Error as e:
+					print("ERROR: Error occurred while trying to disconnect from the MariaDB database: ", str(e))
 				del MySQL_DB_Conn
 				return createJSONResponse('-1',"Failed to retrieve current status, not connected to MariaDB database.",500)
 		except Error as e:
                 	return createJSONResponse('-1',"Failed to retrieve current status: " + str(e),500)
 		finally:
 			del cursor
+			if MySQL_DB_Conn.is_connected():
+				MySQL_DB_Conn.close()
 			del MySQL_DB_Conn
 	else:
 		del MySQL_DB_Conn
