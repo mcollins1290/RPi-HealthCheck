@@ -345,6 +345,10 @@ def main():
 				print("INFO: Turning off GPIO Pin " + str(LED_ENABLED_PIN) + " will not occur as GPIO is not enabled.")
 		else:
 			print("INFO: LED determined by current status is currently illuminated. No change needed!")
+			# Close cursor & connection to DB.
+			disconnect_db_connection(MySQL_DB_Conn)
+			# Tidy-up
+			del MySQL_DB_Conn
 			return
 
 	#  Turn on relevant LED as determined by current status.
