@@ -207,13 +207,13 @@ def return_enabled_led():
 		print("ERROR: Error occurred while querying database for enabled LED: ", str(e))
 		sys.exit(1)
 
-def control_led(gpio_pin, brightness = 100, frequency = 1, enabled_value = None):
+def control_led(gpio_pin, brightness = 100, frequency = 1, enabled_value = None, comment = "<No Value>"):
 	global debug
 	global GPIO
 	global GPIOSETTINGS
 	global GPIO_PWM_PIN
 
-	print("INFO: Setting LED on GPIO Pin " + str(gpio_pin) + ". Frequency: " + str(frequency) + ", Brightness: " + str(brightness))
+	print("INFO: Setting LED on GPIO Pin " + str(gpio_pin) + ". Frequency: " + str(frequency) + ", Brightness: " + str(brightness) + ", Comment: " + str(comment))
 	try:
 		# Setup LED
 		GPIO.setup(gpio_pin, GPIO.OUT)
@@ -355,7 +355,7 @@ def main():
 	if (GPIOSETTINGS['ENABLED']):
 		if (debug):
 			print("DEBUG INFO: Turning on LED on GPIO Pin " + str((STATUS_GPIO_REC['pin'])))
-		control_led(STATUS_GPIO_REC['pin'], STATUS_GPIO_REC['brightness'], STATUS_GPIO_REC['flash_freq'],"'Y'")
+		control_led(STATUS_GPIO_REC['pin'], STATUS_GPIO_REC['brightness'], STATUS_GPIO_REC['flash_freq'],"'Y'", STATUS_GPIO_REC['comment'])
 	else:
 		print("INFO: Turning on GPIO Pin " + str(STATUS_GPIO_REC['pin']) + " will not occur as GPIO is not enabled.")
 	# Close cursor & connection to DB.
